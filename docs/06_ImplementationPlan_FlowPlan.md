@@ -125,21 +125,27 @@ Construye el componente CalendarDay.
 - [ ] Botón de micrófono (web speech API, opcional)
 
 ### Sprint 3B — Backend IA (4 días)
-- [ ] Gemini client configurado con tools schema completo
-- [ ] System prompt con contexto del calendario
+- [ ] Gemini client configurado con tools schema completo (9 tools: moverTarea, reorganizarDia, crearTarea, sugerirHorario, estimarDuracion, cancelarTarea, editarTarea, asignarHorarioFlotante, resumenDelDia)
+- [ ] System prompt con contexto del calendario, reglas de desambiguación y encadenamiento controlado
 - [ ] `POST /api/ai/command` con SSE streaming
 - [ ] Sanitización de input (Zod + strip HTML)
+- [ ] Mapeo server-side de IDs cortos efímeros (`task_1` → cuid real)
+- [ ] Validación Zod del output de Gemini con `GeminiOutputSchema` antes del preview
+- [ ] Whitelist de `functionName` (rechazar cualquier nombre no en los 9 tools)
 - [ ] Rate limiting (20 calls/day plan Free)
-- [ ] `POST /api/ai/estimate` para duración
+- [ ] Timeout de Gemini: **8 segundos** (margen antes del límite de 10s de Vercel)
+- [ ] `POST /api/ai/estimate` para duración con caché por `(titulo, categoria)`
 - [ ] Logging en tabla `AIInteraction`
 
 ### Sprint 3C — Preview + confirmación (3 días)
 - [ ] Panel de preview dentro del Spotlight
 - [ ] Diff visual: tareas originales vs nuevas posiciones
-- [ ] Botones Confirmar / Descartar
-- [ ] `PATCH /api/tasks/reorder` (bulk update en transacción)
+- [ ] UX diferenciada para tools de solo lectura (`sugerirHorario`, `resumenDelDia`) vs mutaciones
+- [ ] Botones Confirmar / Descartar (mutaciones) | Cerrar (solo lectura)
+- [ ] `PATCH /api/tasks/bulk` (bulk update atómico en transacción Prisma)
+- [ ] `PATCH /api/tasks/:id/cancel` para cancelarTarea
 - [ ] Optimistic updates con TanStack Query
-- [ ] Toast de confirmación con "Deshacer" (5 segundos)
+- [ ] Toast de confirmación con "Deshacer" (5 segundos, revertido con snapshot de TanStack Query)
 
 ### Prompt de Agente para /api/ai/command
 ```

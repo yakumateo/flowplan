@@ -81,7 +81,7 @@ model UserSettings {
   id              String   @id @default(cuid())
   userId          String   @unique
   dayStartHour    Int      @default(7)
-  dayEndHour      Int      @default(22)
+  dayEndHour      Int      @default(23)  // 11pm — alineado con timeline del PRD
   defaultDuration Int      @default(60)
   theme           String   @default("dark")
   timezone        String   @default("America/Lima")
@@ -155,9 +155,10 @@ GET    /api/auth/session         → Sesión actual del usuario
 GET    /api/tasks                → Listar tareas (con filtros)
 POST   /api/tasks                → Crear tarea
 GET    /api/tasks/:id            → Obtener tarea por ID
-PATCH  /api/tasks/:id            → Actualizar tarea (parcial)
-DELETE /api/tasks/:id            → Eliminar tarea (requiere confirmación)
-PATCH  /api/tasks/reorder        → Reordenar múltiples tareas (bulk update)
+PATCH  /api/tasks/:id            → Actualizar tarea (parcial) — también para editarTarea de IA
+DELETE /api/tasks/:id            → Eliminar tarea permanente (requiere confirmación explícita)
+PATCH  /api/tasks/:id/cancel     → Cancelar tarea (status→CANCELLED) — usado por cancelarTarea de IA
+PATCH  /api/tasks/bulk           → Actualizar múltiples tareas atomicamente (reorganizarDia, moverFlotante)
 ```
 
 #### GET /api/tasks — Query params
@@ -192,29 +193,37 @@ PATCH  /api/tasks/reorder        → Reordenar múltiples tareas (bulk update)
 }
 ```
 
-#### PATCH /api/tasks/reorder — Body (para bulk update después de IA)
+#### PATCH /api/tasks/bulk — Body (para bulk update después de IA)
 ```typescript
 {
   updates: Array<{
-    id: string
-    startTime: string
-    endTime: string
+    id: string           // cuid real (resuelto server-side desde ID corto de Gemini)
+    startTime?: string   // ISO 8601
+    endTime?: string     // ISO 8601
+    status?: TaskStatus  // para cancelarTarea
+    title?: string       // para editarTarea
+    priority?: Priority
+    category?: Category
+    duration?: number
+    isFloating?: boolean // false cuando se asigna horario a flotante
   }>
 }
 ```
-Ejecuta una transacción Prisma para actualizar todas las tareas atomicamente.
+Ejecuta una transacción Prisma para actualizar todas las tareas atómicamente.
 
 ### 2.3 IA — Spotlight
 ```
 POST   /api/ai/command           → Procesar comando de lenguaje natural (SSE stream)
-POST   /api/ai/estimate          → Estimar duración de una tarea
+POST   /api/ai/estimate          → Estimar duración de una tarea (con caché)
 ```
 
 #### POST /api/ai/command — Body
 ```typescript
 {
-  input: string           // texto del usuario, max 500 chars
+  input: string           // texto del usuario, max 500 chars (sanitizado server-side)
   date: string            // YYYY-MM-DD, contexto del día activo
+  // NOTA: El servidor obtiene las tareas del día internamente desde Prisma.
+  // El cliente NO envía el estado del calendario por seguridad.
 }
 ```
 
@@ -251,8 +260,11 @@ data: { message: "No pude entender ese comando. ¿Puedes reformularlo?" }
   estimatedMinutes: number    // 15, 30, 45, 60, 90, 120...
   confidence: "high" | "medium" | "low"
   reasoning: string           // "Reuniones típicas duran 60 min"
+  fromCache: boolean          // true si vino de caché (no consumió cuota de API)
 }
 ```
+
+> **Caché de estimaciones:** la respuesta se cachea por clave `estimate:{normalize(titulo)}:{categoria}` durante 7 días. Evita llamadas redundantes a Gemini para títulos comunes ("reunión", "almuerzo", etc.).
 
 ### 2.4 Settings
 ```

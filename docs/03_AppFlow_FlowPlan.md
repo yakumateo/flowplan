@@ -72,8 +72,8 @@ Vista de día (default) o última vista usada
 Cmd+K presionado
      │
      ▼
-Overlay oscuro fade-in (200ms)
-Barra de búsqueda centrada aparece con spring (300ms)
+Overlay oscuro fade-in (200ms ease-out) ─┐ en paralelo
+Barra de búsqueda spring 0.95→1 (300ms)  ─┘
 Input enfocado automáticamente
      │
      ▼

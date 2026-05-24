@@ -44,7 +44,7 @@ Muchas personas no comienzan sus tareas porque el proceso de planificarlas se si
 ## 4. Features — MVP (Fase 1 y 2)
 
 ### 4.1 Calendario visual
-- Vista de **día** con timeline hora por hora (6am–11pm).
+- Vista de **día** con timeline hora por hora (configurable: `dayStartHour`–`dayEndHour` en settings de usuario, default 7am–11pm).
 - Vista de **semana** con bloques de tareas.
 - Cambio de vista sin recargar, transición animada.
 - Bloques arrastrables con drag & drop (Framer Motion).
@@ -139,18 +139,26 @@ Muchas personas no comienzan sus tareas porque el proceso de planificarlas se si
 
 ## 9. Riesgos
 
-| Riesgo | Probabilidad | Mitigación |
-|---|---|---|
-| La IA malinterpreta comandos del usuario | Media | Preview antes de ejecutar + botón "deshacer" |
-| Latencia de Gemini >2s interrumpe la UX | Media | Skeleton animado + streaming de respuesta |
-| Costo de API de IA escala con usuarios | Media | Rate limiting por usuario, caché de estimaciones comunes |
-| Complejidad de animaciones afecta performance | Baja | Framer Motion con `will-change`, lazy loading de vistas |
+| # | Riesgo | Probabilidad | Impacto | Mitigación |
+|---|---|---|---|---|
+| R1 | La IA malinterpreta comandos del usuario | Media | Medio | Preview antes de ejecutar + toast "Deshacer" 5s + métricas de tasa de clarificación |
+| R2 | Latencia de Gemini >2s interrumpe la UX | Media | Alto | Skeleton animado + streaming SSE; fallback a error amigable si >8s (margen antes del timeout de Vercel) |
+| R3 | Costo de API de IA escala con usuarios | Media | Alto | Rate limiting 20 llamadas/día en plan Free; caché de estimaciones comunes por `(titulo, categoria)` |
+| R4 | Complejidad de animaciones afecta performance | Baja | Bajo | Framer Motion con `will-change`; lazy loading de vistas; auditoría con Chrome DevTools en Fase 4 |
+| R5 | Supabase Free Tier — límites de DB y pausa automática | Alta | Crítico | Monitorear uso de DB semanalmente; retention policy en `AIInteraction` (eliminar >30 días); definir plan de migración a Supabase Pro antes de 400 usuarios |
+| R6 | Prompt injection en endpoint de IA | Media | Alto | Validar `functionName` devuelto por Gemini contra whitelist; validar `args` con Zod estricto; nunca incluir datos de otros usuarios en el contexto |
+| R7 | Conflictos de datos con optimistic updates | Media | Medio | Bloquear nuevas acciones mientras hay mutación pendiente; reconciliación forzada post-mutación con `invalidateQueries` |
+| R8 | Vercel Hobby timeout 10s = timeout de Gemini (sin margen) | Media | Alto | Reducir timeout de Gemini a 8s; o usar Vercel Edge Functions (sin límite de 10s) para el endpoint `/api/ai` |
+| R9 | Breaking changes en SDK `@google/generative-ai` | Media | Medio | Pinear versión exacta; abstraer cliente Gemini en `lib/ai/geminiClient.ts`; tests de integración que validen formato de respuesta |
+| R10 | Accesibilidad insuficiente para usuarios con TDAH/neurodivergentes | Media | Alto | Auditoría con axe-core en CI desde Fase 1; testing con screen reader; `prefers-reduced-motion` implementado desde el inicio |
+| R11 | Sin estrategia real de offline (solo banner) | Media | Medio | Para MVP: documentar explícitamente que la app requiere conexión. No prometer sync offline sin implementarlo. Post-MVP: service worker + IndexedDB |
+| R12 | JWT sin refresh token — sesiones largas fallan silenciosamente | Baja | Medio | Configurar `maxAge` JWT a 30 días; interceptor en TanStack Query que detecte 401 y redirija a login con mensaje amigable |
 
 ---
 
 ## 10. Preguntas abiertas
 
-1. ¿El plan Free tiene límite de llamadas a IA por día, o es ilimitado?
+1. ¿El plan Free tiene límite de llamadas a IA por día, o es ilimitado? *(→ definido: 20 llamadas/día en `UserSettings.aiCallsLimit`)*
 2. ¿El Spotlight soporta voz desde el MVP o es solo texto?
-3. ¿Las tareas sin hora fija ("floating tasks") se muestran en el calendario o en una lista separada?
+3. ~~¿Las tareas sin hora fija ("floating tasks") se muestran en el calendario o en una lista separada?~~ *(→ resuelto: sidebar izquierda "Sin agendar", arrastrables al timeline. Campo `isFloating` en DB.)*
 4. ¿Autenticación con Google desde el día 1, o email/password primero?
