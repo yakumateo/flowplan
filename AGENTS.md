@@ -3,6 +3,7 @@
 ## Proyecto
 FlowPlan es una app web de planificación de tareas con IA conversacional.
 Stack: Next.js 15, TypeScript, Prisma, PostgreSQL (Supabase), Framer Motion, TanStack Query, Zustand, Gemini API.
+Arquitectura: Domain-Driven Design (DDD) con separación por bounded contexts.
 
 ## Comandos útiles
 - `npm run dev` — servidor de desarrollo (puerto 3000)
@@ -14,34 +15,125 @@ Stack: Next.js 15, TypeScript, Prisma, PostgreSQL (Supabase), Framer Motion, Tan
 - `npx prisma studio` — explorar DB visualmente
 - `npm audit` — auditoría de seguridad de dependencias
 
-## Estructura del proyecto
+## Arquitectura DDD — Estructura del proyecto
+
+### Principio fundamental
+El código se organiza por **dominio de negocio** (features), no por capa técnica.
+Cada feature contiene sus propias capas internas: `domain → application → infrastructure → view`.
+
+### Flujo de dependencias (regla estricta)
 ```
-/app
-  /(auth)           → páginas de login/registro
-  /(dashboard)      → layout principal con calendario
-    /day            → vista de día
-    /week           → vista de semana
-  /api
-    /tasks          → CRUD de tareas
-    /ai             → Spotlight endpoint (SSE)
-    /auth           → NextAuth handlers
-    /settings       → Configuración del usuario
-/components
-  /calendar         → CalendarDay, CalendarWeek, TaskBlock, TimeSlot
-  /spotlight        → SpotlightModal, SpotlightInput, PreviewPanel
-  /tasks            → TaskForm, TaskCard, TaskSidebar
-  /ui               → componentes base (Button, Input, Badge, Modal)
-/lib
-  /ai               → tools schema, system prompt, gemini client
-  /db               → prisma client singleton
-  /validations      → schemas Zod compartidos frontend/backend
-  /utils            → funciones de utilidad (fechas, slots, etc.)
-/store              → Zustand stores (calendarStore, uiStore)
-/hooks              → useCalendar, useSpotlight, useTasks
-/types              → TypeScript interfaces globales
+view/ (componentes, hooks) → application/ (use cases, services) → domain/ (entidades, value objects)
+                                                                 ↗ infrastructure/ (repositories, providers)
+```
+Las capas internas (`domain/`) NUNCA importan de capas externas (`infrastructure/`, `view/`).
+
+### Estructura de carpetas
+```
+/app                                    ← Next.js routing (capa DELGADA, solo delega)
+  /(auth)/login, /register              ← Páginas de autenticación
+  /(dashboard)/layout, /day, /week      ← Layout principal con calendario
+  /api/tasks                            ← Route handlers (delegan a application layer)
+  /api/ai                               ← Spotlight endpoint (SSE)
+  /api/auth                             ← NextAuth handlers
+  /api/settings                         ← Configuración del usuario
+
+/features                               ← Módulos DDD por bounded context
+  /tasks
+    /domain                             ← Entidades, value objects, schemas Zod
+      task.entity.ts                    ← TaskSchema, NewTaskSchema + tipos
+      value-objects.ts                  ← Priority, Category, TaskStatus
+    /application                        ← Use cases y servicios de negocio
+      create-task.use-case.ts
+      update-task.use-case.ts
+      delete-task.use-case.ts
+      bulk-update.use-case.ts
+      task.service.ts                   ← Lógica de negocio (preparar, validar)
+    /infrastructure                     ← Repositorios (queries Prisma)
+      task.repository.ts
+    /view                               ← Componentes React y hooks
+      /components
+        TaskBlock.tsx, TaskCard.tsx, TaskForm.tsx, TaskSidebar.tsx
+      /hooks
+        useTasks.ts, useCreateTask.ts
+
+  /calendar
+    /domain
+      calendar.entity.ts                ← TimeSlot, DaySchedule tipos
+      value-objects.ts                  ← TimeRange validación
+    /application
+      get-day-schedule.use-case.ts
+      get-week-schedule.use-case.ts
+      calendar.service.ts               ← Cálculo de slots, detección de conflictos
+    /view
+      /components
+        CalendarDay.tsx, CalendarWeek.tsx, TimeSlot.tsx, CurrentTimeLine.tsx
+      /hooks
+        useCalendar.ts
+
+  /spotlight
+    /domain
+      ai-command.entity.ts              ← AICommand, AIPreview schemas
+      value-objects.ts                  ← SanitizedInput
+    /application
+      process-command.use-case.ts
+      estimate-duration.use-case.ts
+      spotlight.service.ts              ← sanitizeInput, reorganizeDay
+      rate-limiter.service.ts
+    /infrastructure
+      gemini.provider.ts                ← Wrapper del cliente Gemini
+      tools-schema.ts                   ← Definición de tools para function calling
+      system-prompt.ts                  ← Template del system prompt
+      ai-interaction.repository.ts      ← Logging en tabla AIInteraction
+    /view
+      /components
+        SpotlightModal.tsx, SpotlightInput.tsx, PreviewPanel.tsx
+      /hooks
+        useSpotlight.ts
+
+  /auth
+    /domain
+      user.entity.ts                    ← User entity schema + tipos
+    /infrastructure
+      auth.config.ts                    ← Configuración NextAuth + providers
+    /view
+      /components
+        LoginForm.tsx, RegisterForm.tsx
+      /hooks
+        useAuth.ts
+
+  /settings
+    /domain
+      settings.entity.ts               ← UserSettings schema + tipos
+    /application
+      update-settings.use-case.ts
+    /infrastructure
+      settings.repository.ts
+    /view
+      /components
+        SettingsForm.tsx
+      /hooks
+        useSettings.ts
+
+/shared                                 ← Cross-cutting concerns
+  /ui                                   ← Design system primitives (Button, Input, Badge, Modal)
+  /infrastructure
+    db.ts                               ← Prisma client singleton
+  /store                                ← Zustand stores (calendarStore, uiStore)
+  /types                                ← TypeScript interfaces globales compartidas
+  /utils                                ← Funciones de utilidad (fechas, formatters)
 ```
 
 ## Reglas de código — NO NEGOCIABLES
+
+### Arquitectura DDD
+- Los route handlers de `/app/api/` son DELGADOS: validan input con Zod, delegan al use case, devuelven respuesta.
+- La lógica de negocio vive en `/features/{dominio}/application/`, NUNCA en route handlers ni componentes.
+- Las entidades y schemas Zod viven en `/features/{dominio}/domain/`.
+- Los queries a Prisma viven en `/features/{dominio}/infrastructure/`, NUNCA en use cases directamente.
+- Los componentes React son "tontos": reciben datos via hooks, no contienen lógica de negocio.
+- Los hooks de cada feature viven en `/features/{dominio}/view/hooks/`.
+- Imports entre features: un feature puede importar del `domain/` de otro feature, NUNCA de su `infrastructure/` o `view/`.
 
 ### Seguridad (CRÍTICO)
 - NUNCA hardcodees API keys, passwords o secrets en el código. Siempre `process.env.NOMBRE`.
@@ -57,12 +149,14 @@ Stack: Next.js 15, TypeScript, Prisma, PostgreSQL (Supabase), Framer Motion, Tan
 - `"strict": true` en tsconfig — sin excepciones.
 - No usar `any`. Usar `unknown` + type guards cuando el tipo no es conocido.
 - Las respuestas de Gemini siempre se validan con Zod antes de usar sus datos.
-- Interfaces en `/types/index.ts`, schemas Zod en `/lib/validations/`.
+- Interfaces compartidas en `/shared/types/index.ts`.
+- Schemas Zod de cada dominio en `/features/{dominio}/domain/`.
 
 ### Base de datos
 - Usar `prisma.$transaction([...])` para updates de múltiples registros (reorganización de tareas).
 - No crear queries sin índice en tablas grandes. Índices definidos en schema.prisma.
 - No exponer IDs internos (cuid) directamente en URLs públicas sin validación.
+- Los repositorios (`*.repository.ts`) son la ÚNICA capa que toca Prisma.
 
 ### Animaciones
 - Cada TaskBlock: `layoutId="task-{id}"` para animaciones automáticas de reordenamiento.
@@ -72,7 +166,7 @@ Stack: Next.js 15, TypeScript, Prisma, PostgreSQL (Supabase), Framer Motion, Tan
 - Usar `type: "spring"` para movimientos de bloques, `ease-out` para entradas.
 
 ### API de IA
-- Llamadas a Gemini SOLO desde el servidor (/api/ai). Nunca desde el cliente.
+- Llamadas a Gemini SOLO desde el servidor (`/features/spotlight/infrastructure/`). Nunca desde el cliente.
 - El endpoint /api/ai/command devuelve un PREVIEW — no ejecuta mutaciones en DB.
 - Las mutaciones en DB solo ocurren cuando el usuario confirma explícitamente.
 - Timeout de 10 segundos en llamadas a Gemini con fallback de error amigable.
@@ -80,7 +174,12 @@ Stack: Next.js 15, TypeScript, Prisma, PostgreSQL (Supabase), Framer Motion, Tan
 
 ## Convenciones de nombres
 - Componentes React: PascalCase (`TaskBlock.tsx`, `SpotlightModal.tsx`)
-- Hooks: camelCase con prefijo use (`useCalendar.ts`, `useSpotlight.ts`)
+- Entidades de dominio: kebab-case (`task.entity.ts`, `value-objects.ts`)
+- Use cases: kebab-case (`create-task.use-case.ts`)
+- Servicios: kebab-case (`task.service.ts`, `rate-limiter.service.ts`)
+- Repositorios: kebab-case (`task.repository.ts`)
+- Providers: kebab-case (`gemini.provider.ts`)
+- Hooks: camelCase con prefijo use (`useTasks.ts`, `useSpotlight.ts`)
 - Constantes: SCREAMING_SNAKE_CASE (`MAX_AI_CALLS_PER_DAY`)
 - Funciones de utilidad: camelCase (`calculateSlots`, `sanitizeInput`)
 - Archivos de ruta API Next.js: `route.ts`
@@ -113,8 +212,11 @@ Stack: Next.js 15, TypeScript, Prisma, PostgreSQL (Supabase), Framer Motion, Tan
 ## Lo que NO debes hacer
 - No crear archivos fuera de la estructura definida arriba sin consultar.
 - No modificar schema.prisma sin crear la migración correspondiente con `prisma migrate dev`.
-- No agregar lógica de negocio dentro de componentes — va en `/lib/` o hooks.
+- No agregar lógica de negocio dentro de componentes React — va en `/features/{dominio}/application/`.
+- No agregar lógica de negocio en route handlers de `/app/api/` — delegan a use cases.
 - No llamar a Gemini directamente desde componentes de React.
+- No llamar a Prisma fuera de archivos `*.repository.ts`.
+- No importar `infrastructure/` o `view/` de un feature desde otro feature.
 - No usar `console.log` — eliminarlo o usar `console.error` solo para errores reales.
 - No hacer fetch desde el cliente a APIs externas — siempre a través de nuestras API routes.
 - No usar `any` en TypeScript.
