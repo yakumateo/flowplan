@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0f0f10;
+  --foreground: #f2f2f3;
+  --surface: #1a1a1e;
+  --elevated: #242428;
+  
+  --border-subtle: #2e2e34;
+  --border-visible: #3e3e46;
+
+  --text-primary: #f2f2f3;
+  --text-secondary: #9898a6;
+  --text-disabled: #5a5a6a;
+
+  --accent-primary: #7c6ff7;
+  --accent-hover: #6b5ee6;
+  --accent-soft: #2a2748;
+
+  --success: #34d399;
+  --alert: #fbbf24;
+  --error: #f87171;
+  --info: #60a5fa;
+
+  --category-trabajo: #7c6ff7;
+  --category-personal: #34d399;
+  --category-salud: #f87171;
+  --category-otro: #fbbf24;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  
+  --color-border-subtle: var(--border-subtle);
+  --color-border-visible: var(--border-visible);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-disabled: var(--text-disabled);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-success: var(--success);
+  --color-alert: var(--alert);
+  --color-error: var(--error);
+  --color-info: var(--info);
+
+  --color-cat-trabajo: var(--category-trabajo);
+  --color-cat-personal: var(--category-personal);
+  --color-cat-salud: var(--category-salud);
+  --color-cat-otro: var(--category-otro);
+
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
