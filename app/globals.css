@@ -1,65 +1,191 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Design Tokens — FlowPlan
+   ========================================================================== */
+
 :root {
-  --background: #0f0f10;
-  --foreground: #f2f2f3;
-  --surface: #1a1a1e;
-  --elevated: #242428;
-  
-  --border-subtle: #2e2e34;
+  /* Fondo y superficies */
+  --background:    #0f0f10;
+  --surface:       #1a1a1e;
+  --elevated:      #242428;
+  --overlay:       #2e2e34;
+
+  /* Bordes */
+  --border-subtle:  #2a2a30;
   --border-visible: #3e3e46;
 
-  --text-primary: #f2f2f3;
+  /* Texto */
+  --text-primary:   #f2f2f3;
   --text-secondary: #9898a6;
-  --text-disabled: #5a5a6a;
+  --text-muted:     #5a5a6a;
+  --text-disabled:  #3e3e46;
 
+  /* Acento principal — violeta */
   --accent-primary: #7c6ff7;
-  --accent-hover: #6b5ee6;
-  --accent-soft: #2a2748;
+  --accent-hover:   #6b5ee6;
+  --accent-soft:    #2a2748;
+  --accent-muted:   #1e1c36;
 
+  /* Semánticos */
   --success: #34d399;
-  --alert: #fbbf24;
-  --error: #f87171;
-  --info: #60a5fa;
+  --alert:   #fbbf24;
+  --error:   #f87171;
+  --info:    #60a5fa;
 
-  --category-trabajo: #7c6ff7;
+  /* Categorías de tareas */
+  --category-trabajo:  #7c6ff7;
   --category-personal: #34d399;
-  --category-salud: #f87171;
-  --category-otro: #fbbf24;
+  --category-salud:    #f87171;
+  --category-otro:     #fbbf24;
+
+  /* Calendario */
+  --timeline-hour-height: 60px;   /* 1 hora = 60px → 1 min = 1px */
+  --timeline-gutter: 56px;        /* ancho de la columna de horas */
+  --current-time-line: #f87171;   /* línea roja de hora actual */
+  --task-block-radius: 6px;
+
+  /* Sidebar de tarea */
+  --sidebar-width: 360px;
+
+  /* Z-index scale */
+  --z-sidebar:    30;
+  --z-modal:      40;
+  --z-spotlight:  50;
+  --z-toast:      60;
 }
 
+/* ==========================================================================
+   Tailwind v4 — mapeo de tokens al theme
+   ========================================================================== */
+
 @theme {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
-  --color-elevated: var(--elevated);
-  
-  --color-border-subtle: var(--border-subtle);
-  --color-border-visible: var(--border-visible);
+  --color-background:      var(--background);
+  --color-surface:         var(--surface);
+  --color-elevated:        var(--elevated);
+  --color-overlay:         var(--overlay);
 
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-text-disabled: var(--text-disabled);
+  --color-border-subtle:   var(--border-subtle);
+  --color-border-visible:  var(--border-visible);
 
-  --color-accent-primary: var(--accent-primary);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-soft: var(--accent-soft);
+  --color-text-primary:    var(--text-primary);
+  --color-text-secondary:  var(--text-secondary);
+  --color-text-muted:      var(--text-muted);
+  --color-text-disabled:   var(--text-disabled);
+
+  --color-accent-primary:  var(--accent-primary);
+  --color-accent-hover:    var(--accent-hover);
+  --color-accent-soft:     var(--accent-soft);
+  --color-accent-muted:    var(--accent-muted);
 
   --color-success: var(--success);
-  --color-alert: var(--alert);
-  --color-error: var(--error);
-  --color-info: var(--info);
+  --color-alert:   var(--alert);
+  --color-error:   var(--error);
+  --color-info:    var(--info);
 
-  --color-cat-trabajo: var(--category-trabajo);
+  --color-cat-trabajo:  var(--category-trabajo);
   --color-cat-personal: var(--category-personal);
-  --color-cat-salud: var(--category-salud);
-  --color-cat-otro: var(--category-otro);
+  --color-cat-salud:    var(--category-salud);
+  --color-cat-otro:     var(--category-otro);
 
   --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
 }
 
+/* ==========================================================================
+   Reset / Base
+   ========================================================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
   background-color: var(--background);
-  color: var(--foreground);
+  color: var(--text-primary);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-visible);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Focus visible global */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Componentes del calendario
+   ========================================================================== */
+
+.timeline-grid {
+  position: relative;
+  width: 100%;
+}
+
+/* Línea horizontal por hora */
+.timeline-hour-line {
+  position: absolute;
+  left: var(--timeline-gutter);
+  right: 0;
+  height: 1px;
+  background: var(--border-subtle);
+  pointer-events: none;
+}
+
+/* Línea de hora actual (roja) */
+.current-time-line {
+  position: absolute;
+  left: var(--timeline-gutter);
+  right: 0;
+  height: 2px;
+  background: var(--current-time-line);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.current-time-line::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--current-time-line);
+}
+
+/* Bloque de tarea en el timeline */
+.task-block {
+  position: absolute;
+  border-radius: var(--task-block-radius);
+  overflow: hidden;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+
+.task-block:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 5;
+}
+
+/* Animaciones de entrada */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
