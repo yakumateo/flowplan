@@ -6,8 +6,8 @@
  * - `auth` se usa en route handlers para obtener la sesión del servidor.
  * - `handlers` se exporta en app/api/auth/[...nextauth]/route.ts
  *
- * Nota: Este archivo NO puede importarse en el middleware (Edge Runtime)
- * porque usa Prisma y pg (módulos Node.js). Para el middleware usar auth-edge.config.ts
+ * Nota: Este archivo NO puede importarse en el proxy (Edge Runtime)
+ * porque usa Prisma y pg (módulos Node.js). Para el proxy usar auth-edge.config.ts
  */
 
 import NextAuth from 'next-auth'

@@ -1,5 +1,5 @@
 /**
- * middleware.ts — RAÍZ del proyecto (no dentro de /app)
+ * proxy.ts — RAÍZ del proyecto (no dentro de /app)
  *
  * Protege todas las rutas del dashboard y API.
  * Usa la config Edge-compatible de NextAuth v5 (sin Prisma).
@@ -17,10 +17,10 @@
  *   - /api/settings/* → API de settings
  *
  * DEV BYPASS: Si NEXT_PUBLIC_DEV_BYPASS=true en desarrollo,
- * el middleware permite todas las rutas sin verificar sesión.
+ * el proxy permite todas las rutas sin verificar sesión.
  * Los route handlers usan getSessionOrDevUser() para inyectar la sesión dev.
  *
- * NOTA: El middleware solo verifica el JWT en el Edge Runtime.
+ * NOTA: El proxy solo verifica el JWT en el Edge Runtime.
  * Los route handlers realizan una segunda verificación por seguridad en profundidad.
  */
 
@@ -34,7 +34,7 @@ export default auth((req) => {
   const isAuthenticated = !!req.auth?.user
 
   // ── Dev bypass: en desarrollo con NEXT_PUBLIC_DEV_BYPASS=true ──────────────
-  // El middleware deja pasar todo. Los route handlers inyectan la sesión dev.
+  // El proxy deja pasar todo. Los route handlers inyectan la sesión dev.
   const isBypassActive =
     process.env.NODE_ENV === 'development' &&
     process.env.NEXT_PUBLIC_DEV_BYPASS === 'true'
@@ -78,7 +78,7 @@ export default auth((req) => {
 
 export const config = {
   /*
-   * Aplicar middleware a todas las rutas excepto assets estáticos y archivos.
+   * Aplicar proxy a todas las rutas excepto assets estáticos y archivos.
    */
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',

@@ -1,6 +1,6 @@
 /**
  * features/auth/infrastructure/auth-edge.config.ts
- * Configuración MÍNIMA de NextAuth para el Edge Runtime (middleware).
+ * Configuración MÍNIMA de NextAuth para el Edge Runtime (proxy).
  *
  * IMPORTANTE: Esta config NO puede importar Prisma ni @prisma/adapter-pg
  * porque el Edge Runtime de Next.js no soporta módulos nativos de Node.js.
